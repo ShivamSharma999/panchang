@@ -8,19 +8,21 @@ const MASA_NAMES = [
 /**
  * Checks if a Solar Sankranti occurs between two dates.
  */
-function hasSankrantiOccurred(startDate, endDate, calculator, location) {
-  let currentDate = new Date(startDate);
-  const startPos = calculator.calculatePlanetaryPositions(currentDate);
-  const startRashi = Math.floor(startPos.Sun.longitude / 30);
-  
-  let d = new Date(startDate);
-  while (d < endDate) {
-    d.setDate(d.getDate() + 1);
-    const pos = calculator.calculatePlanetaryPositions(d);
-    const currentRashi = Math.floor(pos.Sun.longitude / 30);
-    if (currentRashi !== startRashi) return true;
-  }
-  return false;
+function hasSankrantiOccurred(start, end, calculator) {
+    const startPos = calculator.calculatePlanetaryPositions(start);
+    const endPos = calculator.calculatePlanetaryPositions(end);
+    
+    // Convert longitudes to range 0-360
+    let startLong = startPos.Sun.longitude % 360;
+    let endLong = endPos.Sun.longitude % 360;
+
+    // A Sankranti occurs if the Sun crosses a 30-degree boundary
+    // Find the Rashi index for start and end
+    let startRashi = Math.floor(startLong / 30);
+    let endRashi = Math.floor(endLong / 30);
+
+    // If they are different, a Sankranti has occurred
+    return startRashi !== endRashi;
 }
 
 function getPanchang(targetDate, latitude, longitude, timezone) {
