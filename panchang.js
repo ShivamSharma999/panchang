@@ -54,14 +54,13 @@ function getPanchang(targetDate, latitude, longitude, timezone) {
 
     // 4. Calculate Month Names
     let amantaMonth = MASA_NAMES[prevSunSign];
-    if (isAdhika) amantaMonth = "Adhika " + amantaMonth;
 
-    let purnimantaMonth = amantaMonth;
-    if (panchanga.tithi.paksha === 'Krishna') {
-      const nextMonthSign = (prevSunSign + 1) % 12;
-      purnimantaMonth = MASA_NAMES[nextMonthSign];
-      if (isAdhika) purnimantaMonth = "Adhika " + purnimantaMonth;
-    }
+    let purnimantaMonth = MASA_NAMES[prevSunSign == 11 ? 0 : prevSunSign + 1];
+
+    if (isAdhika) {
+      amantaMonth = "Adhika " + amantaMonth;
+      purnimantaMonth = "Adhika " + purnimantaMonth
+      }
 
     return {
       date: targetDate.toDateString(),
