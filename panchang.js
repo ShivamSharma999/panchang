@@ -1,137 +1,88 @@
 const { AstronomicalCalculator } = require('@bidyashish/panchang');
 
-// Mapping of Sun's Sidereal Zodiac Sign (Rashi Index 0-11) at Amavasya to Lunar Month Name
 const MASA_NAMES = [
-  "Chaitra",
-  "Vaishakha",
-  "Jyeshtha",
-  "Ashadha",
-  "Shravana",
-  "Bhadrapada",
-  "Ashvin",
-  "Kartika",
-  "Margashirsha",
-  "Pausha",
-  "Magha",
-  "Phalguna"
+  "Chaitra", "Vaishakha", "Jyeshtha", "Ashadha", "Shravana", "Bhadrapada", 
+  "Ashwina", "Kartika", "Margashirsha", "Pausha", "Magha", "Phalguna"
 ];
 
 /**
- * Calculates complete Hindu Panchang details along with computed Hindu Lunar Months.
- * 
- * @param {Date} targetDate - The date for calculation.
- * @param {number} latitude - Geographic latitude.
- * @param {number} longitude - Geographic longitude.
- * @param {string} timezone - IANA timezone identifier (e.g. 'Asia/Kolkata').
- * @returns {object} Full Panchang details with Amanta and Purnimanta Month names.
+ * Checks if a Solar Sankranti occurs between two dates.
  */
+function hasSankrantiOccurred(startDate, endDate, calculator, location) {
+  let currentDate = new Date(startDate);
+  const startPos = calculator.calculatePlanetaryPositions(currentDate);
+  const startRashi = Math.floor(startPos.Sun.longitude / 30);
+  
+  let d = new Date(startDate);
+  while (d < endDate) {
+    d.setDate(d.getDate() + 1);
+    const pos = calculator.calculatePlanetaryPositions(d);
+    const currentRashi = Math.floor(pos.Sun.longitude / 30);
+    if (currentRashi !== startRashi) return true;
+  }
+  return false;
+}
+
 function getPanchang(targetDate, latitude, longitude, timezone) {
   const calculator = new AstronomicalCalculator();
   const location = { latitude, longitude, timezone };
 
   try {
-    // 1. Calculate base daily Panchang elements
     const panchanga = calculator.calculatePanchanga({ date: targetDate, location });
 
-    // 2. Locate the preceding Amavasya (New Moon)
-    // If today is already Amavasya, we step back to find the Amavasya that started the current cycle.
+    // 1. Locate Amavasya boundaries
     let prevAmavasyaDate = new Date(targetDate);
-    const todayPanchang = calculator.calculatePanchanga({ date: prevAmavasyaDate, location });
-    const isTodayAmavasya = (todayPanchang.tithi.number === 15 && todayPanchang.tithi.paksha === 'Krishna') || 
-                            todayPanchang.tithi.name === 'Amavasya';
-
-    if (isTodayAmavasya) {
-      prevAmavasyaDate.setDate(prevAmavasyaDate.getDate() - 1);
-    }
-
-    let foundPrev = false;
     for (let i = 0; i < 35; i++) {
       const p = calculator.calculatePanchanga({ date: prevAmavasyaDate, location });
-      if ((p.tithi.number === 15 && p.tithi.paksha === 'Krishna') || p.tithi.name === 'Amavasya') {
-        foundPrev = true;
-        break;
-      }
+      if ((p.tithi.number === 15 && p.tithi.paksha === 'Krishna') || p.tithi.name === 'Amavasya') break;
       prevAmavasyaDate.setDate(prevAmavasyaDate.getDate() - 1);
     }
 
-    // 3. Locate the succeeding Amavasya (New Moon)
     let nextAmavasyaDate = new Date(targetDate);
-    let foundNext = false;
     for (let i = 0; i < 35; i++) {
       const p = calculator.calculatePanchanga({ date: nextAmavasyaDate, location });
-      if ((p.tithi.number === 15 && p.tithi.paksha === 'Krishna') || p.tithi.name === 'Amavasya') {
-        foundNext = true;
-        break;
-      }
+      if ((p.tithi.number === 15 && p.tithi.paksha === 'Krishna') || p.tithi.name === 'Amavasya') break;
       nextAmavasyaDate.setDate(nextAmavasyaDate.getDate() + 1);
     }
 
-    // 4. Extract Sun's sidereal longitude at both boundaries
-    const prevPos = calculator.calculatePlanetaryPositions(prevAmavasyaDate,);
-    const nextPos = calculator.calculatePlanetaryPositions(nextAmavasyaDate,);
+    // 2. Determine Adhika Masa (No Sankranti = Adhika)
+    const isAdhika = !hasSankrantiOccurred(prevAmavasyaDate, nextAmavasyaDate, calculator, location);
 
-    const sunLongPrev = prevPos.Sun.longitude; // Sidereal degree (0° to 360°)
-    const sunLongNext = nextPos.Sun.longitude;
+    // 3. Get Sun Sign at start of lunar month
+    const pos = calculator.calculatePlanetaryPositions(prevAmavasyaDate);
+    const prevSunSign = Math.floor(pos.Sun.longitude / 30);
 
-    const prevSunSign = Math.floor(sunLongPrev / 30); // Sidereal Rashi Index (0-11)
-    const nextSunSign = Math.floor(sunLongNext / 30);
-    // 5. Determine the Month names and Adhika Masa status
-    // If the Sun's Rashi is the same at both the start and end of the lunar month,
-    // then no Sankranti (transit) occurred, making it a leap month (Adhika Masa).
-    const isAdhika = prevSunSign == nextSunSign;
+    // 4. Calculate Month Names
     let amantaMonth = MASA_NAMES[prevSunSign];
-    
-    // Purnimanta month starts 15 days earlier (from Krishna Paksha)
-    // Hence, during Krishna Paksha, the Purnimanta month is one month ahead of Amanta.
-    let purnimantaMonth = MASA_NAMES[prevSunSign == 11 ? 0 : prevSunSign + 1];
-    if (isAdhika) {
-      amantaMonth = "Adhika " + amantaMonth;
-      purnimantaMonth = "Adhika" + purnimantaMonth;
+    if (isAdhika) amantaMonth = "Adhika " + amantaMonth;
+
+    let purnimantaMonth = amantaMonth;
+    if (panchanga.tithi.paksha === 'Krishna') {
+      const nextMonthSign = (prevSunSign + 1) % 12;
+      purnimantaMonth = MASA_NAMES[nextMonthSign];
+      if (isAdhika) purnimantaMonth = "Adhika " + purnimantaMonth;
     }
 
-    // Assemble the complete response payload
     return {
       date: targetDate.toDateString(),
-      location: {
-        latitude: latitude,
-        longitude: longitude,
-        timezone: timezone
-      },
-      vara: panchanga.vara,
       tithi: panchanga.tithi,
-      nakshatra: panchanga.nakshatra,
-      yoga: panchanga.yoga,
-      karana: panchanga.karana,
-      sunrise: panchanga.sunrise,
-      sunset: panchanga.sunset,
-      rahuKaal: panchanga.rahuKaal,
       lunarMonth: {
         amanta: amantaMonth,
         purnimanta: purnimantaMonth,
-        isAdhika: isAdhika,
-        sunSignIndexAtAmavasya: prevSunSign,
-        sunLongitudeAtAmavasya: parseFloat(sunLongPrev.toFixed(4))
+        isAdhika: isAdhika
       }
     };
 
   } catch (error) {
-    console.error("Astronomical calculation failed:", error);
+    console.error("Calculation failed:", error);
     throw error;
   } finally {
-    // Always cleanup Swiss Ephemeris resources
     calculator.cleanup();
   }
 }
 
-// ==========================================
-// EXAMPLE EXECUTION
-// ==========================================
-const testDate = new Date(); // This lands on today's date
-const lat = 28.6139;  // New Delhi
-const lng = 77.2090;
-const tz = "Asia/Kolkata";
-
-const result = getPanchang(testDate, lat, lng, tz);
-console.log(JSON.stringify(result, null, 2));
+// Example Execution
+const result = getPanchang(new Date("2026-06-15"), 28.6139, 77.2090, "Asia/Kolkata");
+console.log(result);
 
 module.exports = { getPanchang };
