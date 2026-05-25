@@ -23,4 +23,4 @@ jobs:
         run: npm i
 
       - name: Run Node script
-        run: node panchang.cjs
+        run: node panchang.js
