@@ -1,0 +1,37 @@
+{
+  "name": "@sanatan/panchang",
+  "version": "1.0.10",
+  "description": "Complete Hindu Panchanga calculator with Tithi, Nakshatra, Yoga, Karana, Vara calculations and Swiss Ephemeris precision",
+  "main": "panchang.js",
+  "scripts": {},
+  "keywords": [
+    "astronomy",
+    "ephemeris",
+    "calculations",
+    "swiss-ephemeris",
+    "celestial-mechanics",
+    "panchanga",
+    "vedic-astrology",
+    "hindu-calendar",
+    "planetary-positions",
+    "lunar-calendar",
+    "tithi",
+    "nakshatra",
+    "yoga",
+    "karana",
+    "vara",
+    "sunrise",
+    "sunset",
+    "rahu-kaal",
+    "moon-phase"
+  ],
+  "dependencies": {
+    "@bidyashish/panchang": "^1.0.0"
+  },
+  "author": "SanatanAI",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ShivamSharma999/panchang.git"
+  }
+}
