@@ -81,7 +81,7 @@ function getPanchang(targetDate, latitude, longitude, timezone) {
     };
 
   } catch (error) {
-    console.error("Calculation failed:", error);
+    console.error("Astronimical calculation failed:", error);
     throw error;
   } finally {
     calculator.cleanup();
@@ -89,7 +89,7 @@ function getPanchang(targetDate, latitude, longitude, timezone) {
 }
 
 // Example Execution
-const result = getPanchang(new Date(""), 28.6139, 77.2090, "Asia/Kolkata");
+const result = getPanchang(new Date(), 28.6139, 77.2090, "Asia/Kolkata");
 console.log(result);
 
 module.exports = { getPanchang };
