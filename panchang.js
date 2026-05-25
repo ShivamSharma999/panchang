@@ -66,11 +66,18 @@ function getPanchang(targetDate, latitude, longitude, timezone) {
     return {
       date: targetDate.toDateString(),
       tithi: panchanga.tithi,
+      vara: panchanga.vara,
       lunarMonth: {
         amanta: amantaMonth,
         purnimanta: purnimantaMonth,
         isAdhika: isAdhika
-      }
+      },
+      nakshatra: panchanga.nakshatra,
+      yoga: panchanga.yoga,
+      karana: panchanga.karana,
+      sunrise: panchanga.sunrise,
+      sunset: panchanga.sunset,
+      rahuKaal: panchanga.rahuKaal,
     };
 
   } catch (error) {
@@ -82,7 +89,7 @@ function getPanchang(targetDate, latitude, longitude, timezone) {
 }
 
 // Example Execution
-const result = getPanchang(new Date("2026-06-15"), 28.6139, 77.2090, "Asia/Kolkata");
+const result = getPanchang(new Date(""), 28.6139, 77.2090, "Asia/Kolkata");
 console.log(result);
 
 module.exports = { getPanchang };
