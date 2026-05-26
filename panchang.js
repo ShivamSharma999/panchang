@@ -29,7 +29,7 @@ function isAdhikaMasa(startAmavasya, endAmavasya, calculator) {
     return startRashi === endRashi;
 }
 
-function getPanchang(targetDate, latitude, longitude, timezone) {
+function getPanchang(targetDate = new Date(), latitude = 28.6139, longitude = 77.2090, timezone = "Asia/Kolkata") {
     const calculator = new AstronomicalCalculator();
     const location = { latitude, longitude, timezone };
 
@@ -100,7 +100,6 @@ function getPanchang(targetDate, latitude, longitude, timezone) {
     }
 }
 
-const result = getPanchang(new Date('2026-04-26T12:00:00Z'), 28.6139, 77.2090, "Asia/Kolkata");
-console.log(result);
+console.log(getPanchang());
 
 module.exports = { getPanchang };
