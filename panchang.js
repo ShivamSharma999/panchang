@@ -6,26 +6,18 @@ const MASA_NAMES = [
 ];
 
 /**
- * Checks if a Solar Sankranti occurs between two dates.
+ * Checks if a Solar Sankranti not occurs between two dates.
  */
-function hasSankrantiOccurred(start, end, calculator) {
-    const startPos = calculator.calculatePlanetaryPositions(start);
-    const endPos = calculator.calculatePlanetaryPositions(end);
-    
-    // Convert longitudes to range 0-360
-    let startLong = startPos.Sun.longitude % 360;
-    let endLong = endPos.Sun.longitude % 360;
-  console.log(`Debug: Start Long: ${startLong}, End Long: ${endLong}`);
+function isAdhikaMasa(startAmavasya, endAmavasya, calculator) {
+    const posStart = calculator.calculatePlanetaryPositions(startAmavasya);
+    const posEnd = calculator.calculatePlanetaryPositions(endAmavasya);
 
-    // A Sankranti occurs if the Sun crosses a 30-degree boundary
-    // Find the Rashi index for start and end
-    let startRashi = Math.floor(startLong / 30);
-    let endRashi = Math.floor(endLong / 30);
+    const rashiStart = Math.floor(posStart.Sun.longitude / 30);
+    const rashiEnd = Math.floor(posEnd.Sun.longitude / 30);
 
-    // If they are different, a Sankranti has occurred
-    return startRashi !== endRashi;
+    // If the Rashi is the same, no Sankranti occurred, therefore it IS an Adhika Masa
+    return rashiStart === rashiEnd;
 }
-
 function getPanchang(targetDate, latitude, longitude, timezone) {
   const calculator = new AstronomicalCalculator();
   const location = { latitude, longitude, timezone };
@@ -34,34 +26,21 @@ function getPanchang(targetDate, latitude, longitude, timezone) {
     const panchanga = calculator.calculatePanchanga({ date: targetDate, location });
 
     // 1. Locate Amavasya boundaries
-    let prevAmavasyaDate = new Date(targetDate),
-      prevPurnimaDate = new Date(targetDate);
+    let prevAmavasyaDate = new Date(targetDate);
     for (let i = 0; i < 35; i++) {
       const p = calculator.calculatePanchanga({ date: prevAmavasyaDate, location });
       if ((p.tithi.number === 15 && p.tithi.paksha === 'Krishna') || p.tithi.name === 'Amavasya') break;
       prevAmavasyaDate.setDate(prevAmavasyaDate.getDate() - 1);
     }
-    for (let i = 0; i < 35; i++) {
-      const p = calculator.calculatePanchanga({ date: prevPurnimaDate, location });
-      if ((p.tithi.number === 15 && p.tithi.paksha === 'Shukla') || p.tithi.name === 'Purnima') break;
-      prevPurnimaDate.setDate(prevPurnimaDate.getDate() - 1);
-    }
-
     let nextAmavasyaDate = new Date(targetDate);
-    let nextPurnimaDate = new Date(targetDate);
     for (let i = 0; i < 35; i++) {
       const p = calculator.calculatePanchanga({ date: nextAmavasyaDate, location });
       if ((p.tithi.number === 15 && p.tithi.paksha === 'Krishna') || p.tithi.name === 'Amavasya') break;
       nextAmavasyaDate.setDate(nextAmavasyaDate.getDate() + 1);
     }
-    for (let i = 0; i < 35; i++) {
-      const p = calculator.calculatePanchanga({ date: nextPurnimaDate, location });
-      if ((p.tithi.number === 15 && p.tithi.paksha === 'Shukla') || p.tithi.name === 'Purnima') break;
-      nextPurnimaDate.setDate(nextPurnimaDate.getDate() + 1);
-    }
-console.log(!hasSankrantiOccurred(prevPurnimaDate, nextPurnimaDate, calculator, location));
+    
     // 2. Determine Adhika Masa (No Sankranti = Adhika)
-    const isAdhika = !hasSankrantiOccurred(prevAmavasyaDate, nextAmavasyaDate, calculator, location);
+    const isAdhika = isAdhikaMasa(prevAmavasyaDate, nextAmavasyaDate, calculator);
 
     // 3. Get Sun Sign at start of lunar month
     const pos = calculator.calculatePlanetaryPositions(prevAmavasyaDate);
