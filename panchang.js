@@ -59,7 +59,7 @@ function getPanchang(targetDate, latitude, longitude, timezone) {
       if ((p.tithi.number === 15 && p.tithi.paksha === 'Shukla') || p.tithi.name === 'Purnima') break;
       nextPurnimaDate.setDate(nextPurnimaDate.getDate() + 1);
     }
-console.log(!hasSankrantiOccured(prevPurnimaDate, nextPurnimaDate, calculator, location));
+console.log(!hasSankrantiOccurred(prevPurnimaDate, nextPurnimaDate, calculator, location));
     // 2. Determine Adhika Masa (No Sankranti = Adhika)
     const isAdhika = !hasSankrantiOccurred(prevAmavasyaDate, nextAmavasyaDate, calculator, location);
 
