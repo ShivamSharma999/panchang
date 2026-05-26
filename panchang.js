@@ -1,23 +1,53 @@
 const { AstronomicalCalculator } = require('@bidyashish/panchang');
 
 const MASA_NAMES = [
-  "Chaitra", "Vaishakha", "Jyeshtha", "Ashadha", "Shravana", "Bhadrapada", 
+  "Chaitra", "Vaishakha", "Jyeshtha", "Ashadha", "Shravana", "Bhadrapada",
   "Ashwina", "Kartika", "Margashirsha", "Pausha", "Magha", "Phalguna"
 ];
 
-/**
- * Checks if a Solar Sankranti not occurs between two dates.
- */
-function isAdhikaMasa(startAmavasya, endAmavasya, calculator) {
-    const posStart = calculator.calculatePlanetaryPositions(startAmavasya);
-    const posEnd = calculator.calculatePlanetaryPositions(endAmavasya);
+function isBoundaryTithi(panchanga, type) {
+  if (!panchanga || !panchanga.tithi) return false;
 
-    const rashiStart = Math.floor(posStart.Sun.longitude / 30);
-    const rashiEnd = Math.floor(posEnd.Sun.longitude / 30);
+  if (type === 'amavasya') {
+    return (
+      panchanga.tithi.name === 'Amavasya' ||
+      (panchanga.tithi.number === 15 && panchanga.tithi.paksha === 'Krishna')
+    );
+  }
 
-    // If the Rashi is the same, no Sankranti occurred, therefore it IS an Adhika Masa
-    return rashiStart === rashiEnd;
+  return (
+    panchanga.tithi.name === 'Purnima' ||
+    (panchanga.tithi.number === 15 && panchanga.tithi.paksha === 'Shukla')
+  );
 }
+
+function findBoundaryInstant(fromDate, directionDays, location, calculator, type) {
+  const probe = new Date(fromDate);
+
+  for (let i = 0; i < 40; i++) {
+    const p = calculator.calculatePanchanga({ date: probe, location });
+
+    if (isBoundaryTithi(p, type)) {
+      // Use the exact transition time if the library provides it.
+      return p.tithi.endTime ? new Date(p.tithi.endTime) : new Date(probe);
+    }
+
+    probe.setDate(probe.getDate() + directionDays);
+  }
+
+  throw new Error(`Unable to locate ${type} near ${fromDate.toISOString()}`);
+}
+
+function sunRashiAt(date, calculator) {
+  const pos = calculator.calculatePlanetaryPositions(date);
+  const lon = ((pos.Sun.longitude % 360) + 360) % 360;
+  return Math.floor(lon / 30);
+}
+
+function hasSankrantiOccurred(startInstant, endInstant, calculator) {
+  return sunRashiAt(startInstant, calculator) !== sunRashiAt(endInstant, calculator);
+}
+
 function getPanchang(targetDate, latitude, longitude, timezone) {
   const calculator = new AstronomicalCalculator();
   const location = { latitude, longitude, timezone };
@@ -25,36 +55,24 @@ function getPanchang(targetDate, latitude, longitude, timezone) {
   try {
     const panchanga = calculator.calculatePanchanga({ date: targetDate, location });
 
-    // 1. Locate Amavasya boundaries
-    let prevAmavasyaDate = new Date(targetDate);
-    for (let i = 0; i < 35; i++) {
-      const p = calculator.calculatePanchanga({ date: prevAmavasyaDate, location });
-      if ((p.tithi.number === 15 && p.tithi.paksha === 'Krishna') || p.tithi.name === 'Amavasya') break;
-      prevAmavasyaDate.setDate(prevAmavasyaDate.getDate() - 1);
-    }
-    let nextAmavasyaDate = new Date(targetDate);
-    for (let i = 0; i < 35; i++) {
-      const p = calculator.calculatePanchanga({ date: nextAmavasyaDate, location });
-      if ((p.tithi.number === 15 && p.tithi.paksha === 'Krishna') || p.tithi.name === 'Amavasya') break;
-      nextAmavasyaDate.setDate(nextAmavasyaDate.getDate() + 1);
-    }
-    
-    // 2. Determine Adhika Masa (No Sankranti = Adhika)
-    const isAdhika = isAdhikaMasa(prevAmavasyaDate, nextAmavasyaDate, calculator);
+    // Amanta boundaries
+    const prevAmavasya = findBoundaryInstant(targetDate, -1, location, calculator, 'amavasya');
+    const nextAmavasya = findBoundaryInstant(targetDate, 1, location, calculator, 'amavasya');
+    const isAdhikaAmanta = !hasSankrantiOccurred(prevAmavasya, nextAmavasya, calculator);
 
-    // 3. Get Sun Sign at start of lunar month
-    const pos = calculator.calculatePlanetaryPositions(prevAmavasyaDate);
-    const prevSunSign = Math.floor(pos.Sun.longitude / 30);
+    // Purnimanta boundaries
+    const prevPurnima = findBoundaryInstant(targetDate, -1, location, calculator, 'purnima');
+    const nextPurnima = findBoundaryInstant(targetDate, 1, location, calculator, 'purnima');
+    const isAdhikaPurnimanta = !hasSankrantiOccurred(prevPurnima, nextPurnima, calculator);
 
-    // 4. Calculate Month Names
-    let amantaMonth = MASA_NAMES[prevSunSign];
+    const amantaSunSign = sunRashiAt(prevAmavasya, calculator);
+    const purnimantaSunSign = sunRashiAt(prevPurnima, calculator);
 
-    let purnimantaMonth = MASA_NAMES[prevSunSign == 11 ? 0 : prevSunSign + 1];
+    let amantaMonth = MASA_NAMES[amantaSunSign];
+    let purnimantaMonth = MASA_NAMES[(purnimantaSunSign + 1) % 12];
 
-    if (isAdhika) {
-      amantaMonth = "Adhika " + amantaMonth;
-      purnimantaMonth = "Adhika " + purnimantaMonth
-      }
+    if (isAdhikaAmanta) amantaMonth = `Adhika ${amantaMonth}`;
+    if (isAdhikaPurnimanta) purnimantaMonth = `Adhika ${purnimantaMonth}`;
 
     return {
       date: targetDate.toDateString(),
@@ -63,26 +81,19 @@ function getPanchang(targetDate, latitude, longitude, timezone) {
       lunarMonth: {
         amanta: amantaMonth,
         purnimanta: purnimantaMonth,
-        isAdhika: isAdhika
+        isAdhikaAmanta,
+        isAdhikaPurnimanta
       },
       nakshatra: panchanga.nakshatra,
       yoga: panchanga.yoga,
       karana: panchanga.karana,
       sunrise: panchanga.sunrise,
       sunset: panchanga.sunset,
-      rahuKaal: panchanga.rahuKaal,
+      rahuKaal: panchanga.rahuKaal
     };
-
-  } catch (error) {
-    console.error("Astronimical calculation failed:", error);
-    throw error;
   } finally {
     calculator.cleanup();
   }
 }
-
-// Example Execution
-const result = getPanchang(new Date(), 28.6139, 77.2090, "Asia/Kolkata");
-console.log(result);
 
 module.exports = { getPanchang };
