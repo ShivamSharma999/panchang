@@ -100,8 +100,7 @@ function getPanchang(targetDate, latitude, longitude, timezone) {
     }
 }
 
-// Example Execution for May 26, 2026 (Adhika Jyeshtha)
-const result = getPanchang(new Date('2026-05-26T12:00:00Z'), 28.6139, 77.2090, "Asia/Kolkata");
+const result = getPanchang(new Date('2026-04-26T12:00:00Z'), 28.6139, 77.2090, "Asia/Kolkata");
 console.log(result);
 
 module.exports = { getPanchang };
