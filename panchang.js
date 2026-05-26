@@ -1,6 +1,6 @@
 const { AstronomicalCalculator } = require('@bidyashish/panchang');
 
-const MASA_NAMES = [
+const MONTHS = [
   "Chaitra",
   "Vaishakha",
   "Jyeshtha",
@@ -15,102 +15,75 @@ const MASA_NAMES = [
   "Phalguna"
 ];
 
-// Default location = Delhi
+// Delhi default
 const DEFAULT_LOCATION = {
   latitude: 28.6139,
   longitude: 77.2090,
   timezone: "Asia/Kolkata"
 };
 
-function normalizeDegrees(deg) {
+function normalize(deg) {
   return ((deg % 360) + 360) % 360;
 }
 
 function getRashi(longitude) {
-  return Math.floor(normalizeDegrees(longitude) / 30);
+  return Math.floor(normalize(longitude) / 30);
 }
 
 function isAmavasya(tithi) {
   return (
     tithi.name.toLowerCase().includes("amavasya") ||
-    (tithi.number === 30)
+    tithi.number === 30
   );
-}
-
-function isPurnima(tithi) {
-  return (
-    tithi.name.toLowerCase().includes("purnima") ||
-    (tithi.number === 15 && tithi.paksha === "Shukla")
-  );
-}
-
-function createUTCDate(date, offset = 0) {
-  const d = new Date(date);
-
-  return new Date(Date.UTC(
-    d.getUTCFullYear(),
-    d.getUTCMonth(),
-    d.getUTCDate() + offset,
-    12,
-    0,
-    0
-  ));
-}
-
-function getSunRashi(calculator, date) {
-  const positions = calculator.calculatePlanetaryPositions(date);
-  return getRashi(positions.Sun.longitude);
 }
 
 /*
-  Finds previous/next Amavasya or Purnima
+  Finds exact previous/next amavasya
 */
-function findBoundary(calculator, location, startDate, type, direction) {
-  let lastMatched = null;
+function findAmavasya(calculator, location, startDate, direction) {
+
+  let date = new Date(startDate);
 
   for (let i = 0; i < 35; i++) {
-    const date = createUTCDate(startDate, i * direction);
 
     const p = calculator.calculatePanchanga({
       date,
       location
     });
 
-    const matched =
-      type === "amavasya"
-        ? isAmavasya(p.tithi)
-        : isPurnima(p.tithi);
-
-    if (matched) {
-      lastMatched = date;
-      break;
+    if (isAmavasya(p.tithi)) {
+      return {
+        date: new Date(date),
+        panchanga: p
+      };
     }
+
+    date.setHours(date.getHours() + (24 * direction));
   }
 
-  return lastMatched;
+  return null;
 }
 
 /*
-  Adhik Masa Logic
+  REAL adhik masa calculation
 
-  If Sun does NOT change rashi between
-  two consecutive Amavasyas,
-  then that lunar month is Adhik Masa.
+  If Sun does NOT change rashi
+  between two consecutive amavasyas,
+  then it is adhik masa.
 */
-function calculateAmantaMonth(calculator, location, targetDate) {
-  const prevAmavasya = findBoundary(
+function calculateLunarMonth(calculator, location, targetDate) {
+
+  const prevAmavasya = findAmavasya(
     calculator,
     location,
     targetDate,
-    "amavasya",
     -1
   );
 
-  const nextAmavasya = findBoundary(
+  const nextAmavasya = findAmavasya(
     calculator,
     location,
     targetDate,
-    "amavasya",
     1
   );
 
@@ -121,48 +94,29 @@ function calculateAmantaMonth(calculator, location, targetDate) {
     };
   }
 
-  const prevRashi = getSunRashi(calculator, prevAmavasya);
-  const nextRashi = getSunRashi(calculator, nextAmavasya);
+  const prevSun = calculator.calculatePlanetaryPositions(
+    prevAmavasya.date
+  );
+
+  const nextSun = calculator.calculatePlanetaryPositions(
+    nextAmavasya.date
+  );
+
+  const prevRashi = getRashi(prevSun.Sun.longitude);
+  const nextRashi = getRashi(nextSun.Sun.longitude);
 
   /*
     IMPORTANT:
-    Lunar month is named from the
-    solar sign entered AFTER Amavasya.
 
-    This fixes your previous bug.
+    Month name is based on the
+    rashi entered AFTER amavasya.
   */
   const monthIndex = (nextRashi + 1) % 12;
 
   return {
-    monthName: MASA_NAMES[monthIndex],
+    monthName: MONTHS[monthIndex],
     isAdhika: prevRashi === nextRashi
   };
-}
-
-/*
-  Purnimanta Month
-*/
-function calculatePurnimantaMonth(calculator, location, targetDate) {
-  const prevPurnima = findBoundary(
-    calculator,
-    location,
-    targetDate,
-    "purnima",
-    -1
-  );
-
-  if (!prevPurnima) {
-    return "Unknown";
-  }
-
-  const rashi = getSunRashi(calculator, prevPurnima);
-
-  /*
-    Correct purnimanta mapping
-  */
-  const monthIndex = (rashi + 2) % 12;
-
-  return MASA_NAMES[monthIndex];
 }
 
 function getPanchang({
@@ -189,13 +143,7 @@ function getPanchang({
       location
     });
 
-    const amanta = calculateAmantaMonth(
-      calculator,
-      location,
-      targetDate
-    );
-
-    const purnimanta = calculatePurnimantaMonth(
+    const lunarMonth = calculateLunarMonth(
       calculator,
       location,
       targetDate
@@ -203,52 +151,29 @@ function getPanchang({
 
     return {
 
-      date: targetDate.toISOString(),
+      date: targetDate,
 
-      location,
+      tithi: panchanga.tithi,
 
-      tithi: {
-        name: panchanga.tithi.name,
-        number: panchanga.tithi.number,
-        paksha: panchanga.tithi.paksha,
-        percentage: panchanga.tithi.percentage
-      },
+      vara: panchanga.vara,
 
-      vara: {
-        name: panchanga.vara.name,
-        number: panchanga.vara.number
-      },
+      nakshatra: panchanga.nakshatra,
 
-      nakshatra: {
-        name: panchanga.nakshatra.name,
-        number: panchanga.nakshatra.number,
-        pada: panchanga.nakshatra.pada
-      },
+      yoga: panchanga.yoga,
 
-      yoga: {
-        name: panchanga.yoga.name,
-        number: panchanga.yoga.number
-      },
-
-      karana: {
-        name: panchanga.karana.name,
-        number: panchanga.karana.number
-      },
+      karana: panchanga.karana,
 
       lunarMonth: {
-        amanta: amanta.isAdhika
-          ? `Adhika ${amanta.monthName}`
-          : amanta.monthName,
+        amanta: lunarMonth.isAdhika
+          ? `Adhika ${lunarMonth.monthName}`
+          : lunarMonth.monthName,
 
-        purnimanta,
-
-        isAdhika: amanta.isAdhika
+        isAdhika: lunarMonth.isAdhika
       },
 
       sunrise: panchanga.sunrise,
-      sunset: panchanga.sunset,
 
-      rahuKaal: panchanga.rahuKaal
+      sunset: panchanga.sunset
     };
 
   } finally {
