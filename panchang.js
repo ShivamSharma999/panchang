@@ -34,20 +34,32 @@ function getPanchang(targetDate, latitude, longitude, timezone) {
     const panchanga = calculator.calculatePanchanga({ date: targetDate, location });
 
     // 1. Locate Amavasya boundaries
-    let prevAmavasyaDate = new Date(targetDate);
+    let prevAmavasyaDate = new Date(targetDate),
+      prevPurnimaDate = new Date(targetDate);
     for (let i = 0; i < 35; i++) {
       const p = calculator.calculatePanchanga({ date: prevAmavasyaDate, location });
       if ((p.tithi.number === 15 && p.tithi.paksha === 'Krishna') || p.tithi.name === 'Amavasya') break;
       prevAmavasyaDate.setDate(prevAmavasyaDate.getDate() - 1);
     }
+    for (let i = 0; i < 35; i++) {
+      const p = calculator.calculatePanchanga({ date: prevPurnimaDate, location });
+      if ((p.tithi.number === 15 && p.tithi.paksha === 'Shukla') || p.tithi.name === 'Purnima') break;
+      prevPurnimaDate.setDate(prevPurnimaDate.getDate() - 1);
+    }
 
     let nextAmavasyaDate = new Date(targetDate);
+    let nextPurnimaDate = new Date(targetDate);
     for (let i = 0; i < 35; i++) {
       const p = calculator.calculatePanchanga({ date: nextAmavasyaDate, location });
       if ((p.tithi.number === 15 && p.tithi.paksha === 'Krishna') || p.tithi.name === 'Amavasya') break;
       nextAmavasyaDate.setDate(nextAmavasyaDate.getDate() + 1);
     }
-
+    for (let i = 0; i < 35; i++) {
+      const p = calculator.calculatePanchanga({ date: nextPurnimaDate, location });
+      if ((p.tithi.number === 15 && p.tithi.paksha === 'Shukla') || p.tithi.name === 'Purnima') break;
+      nextPurnimaDate.setDate(nextPurnimaDate.getDate() + 1);
+    }
+console.log(!hasSankrantiOccured(prevPurnimaDate, nextPurnimaDate, calculator, location));
     // 2. Determine Adhika Masa (No Sankranti = Adhika)
     const isAdhika = !hasSankrantiOccurred(prevAmavasyaDate, nextAmavasyaDate, calculator, location);
 
