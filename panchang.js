@@ -15,6 +15,7 @@ function hasSankrantiOccurred(start, end, calculator) {
     // Convert longitudes to range 0-360
     let startLong = startPos.Sun.longitude % 360;
     let endLong = endPos.Sun.longitude % 360;
+  console.log(`Debug: Start Long: ${startLong}, End Long: ${endLong}`);
 
     // A Sankranti occurs if the Sun crosses a 30-degree boundary
     // Find the Rashi index for start and end
