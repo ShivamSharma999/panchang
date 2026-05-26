@@ -95,5 +95,6 @@ function getPanchang(targetDate, latitude, longitude, timezone) {
     calculator.cleanup();
   }
 }
-
+const result = getPanchang(new Date(), 28.6139, 77.2090, "Asia/Kolkata");
+console.log(result);
 module.exports = { getPanchang };
