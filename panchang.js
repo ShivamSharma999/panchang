@@ -1,13 +1,13 @@
 const { AstronomicalCalculator } = require('@bidyashish/panchang');
 
-const LUNAR_MONTHS = [
+const MASA_NAMES = [
   "Chaitra",
   "Vaishakha",
   "Jyeshtha",
   "Ashadha",
   "Shravana",
   "Bhadrapada",
-  "Ashwin",
+  "Ashwina",
   "Kartika",
   "Margashirsha",
   "Pausha",
@@ -15,123 +15,160 @@ const LUNAR_MONTHS = [
   "Phalguna"
 ];
 
-function normalizeDegree(deg) {
+const MS_PER_DAY = 86400000;
+
+function normalizeDegrees(deg) {
   return ((deg % 360) + 360) % 360;
 }
 
-function getRashi(longitude) {
-  return Math.floor(normalizeDegree(longitude) / 30);
-}
-
-function addDays(date, days) {
-  return new Date(date.getTime() + days * 86400000);
+function getSunRashi(longitude) {
+  return Math.floor(normalizeDegrees(longitude) / 30);
 }
 
 function isAmavasya(panchanga) {
-  if (!panchanga || !panchanga.tithi) return false;
-
   return (
     panchanga.tithi.name === "Amavasya" ||
     panchanga.tithi.number === 30
   );
 }
 
-function findPreviousAmavasya(calculator, location, targetDate) {
-  for (let i = 0; i <= 35; i++) {
-    const d = addDays(targetDate, -i);
+function isPurnima(panchanga) {
+  return (
+    panchanga.tithi.name === "Purnima" ||
+    (
+      panchanga.tithi.number === 15 &&
+      panchanga.tithi.paksha === "Shukla"
+    )
+  );
+}
+
+function findPreviousBoundary(
+  calculator,
+  location,
+  targetDate,
+  type
+) {
+  for (let i = 0; i < 35; i++) {
+    const d = new Date(targetDate.getTime() - i * MS_PER_DAY);
 
     const p = calculator.calculatePanchanga({
       date: d,
       location
     });
 
-    if (isAmavasya(p)) {
+    const matched =
+      type === "amavasya"
+        ? isAmavasya(p)
+        : isPurnima(p);
+
+    if (matched) {
       return d;
     }
   }
 
-  throw new Error("Previous Amavasya not found");
+  return null;
 }
 
-function findNextAmavasya(calculator, location, targetDate) {
-  for (let i = 1; i <= 35; i++) {
-    const d = addDays(targetDate, i);
+function findNextBoundary(
+  calculator,
+  location,
+  targetDate,
+  type
+) {
+  for (let i = 1; i < 35; i++) {
+    const d = new Date(targetDate.getTime() + i * MS_PER_DAY);
 
     const p = calculator.calculatePanchanga({
       date: d,
       location
     });
 
-    if (isAmavasya(p)) {
+    const matched =
+      type === "amavasya"
+        ? isAmavasya(p)
+        : isPurnima(p);
+
+    if (matched) {
       return d;
     }
   }
 
-  throw new Error("Next Amavasya not found");
+  return null;
 }
 
-function getSunRashiAt(calculator, date) {
-  const positions = calculator.calculatePlanetaryPositions(date);
-
-  return getRashi(positions.Sun.longitude);
-}
-
-function calculateLunarMonth(calculator, location, targetDate) {
-  const prevAmavasya = findPreviousAmavasya(
+function calculateAdhikaMasa(
+  calculator,
+  location,
+  targetDate
+) {
+  const prevAmavasya = findPreviousBoundary(
     calculator,
     location,
-    targetDate
+    targetDate,
+    "amavasya"
   );
 
-  const nextAmavasya = findNextAmavasya(
+  const nextAmavasya = findNextBoundary(
     calculator,
     location,
-    targetDate
+    targetDate,
+    "amavasya"
   );
 
-  const prevRashi = getSunRashiAt(
-    calculator,
-    prevAmavasya
-  );
+  if (!prevAmavasya || !nextAmavasya) {
+    return {
+      isAdhika: false,
+      monthIndex: 0
+    };
+  }
 
-  const nextRashi = getSunRashiAt(
-    calculator,
-    nextAmavasya
-  );
+  const prevSun = calculator.calculatePlanetaryPositions(prevAmavasya);
+  const nextSun = calculator.calculatePlanetaryPositions(nextAmavasya);
+
+  const prevRashi = getSunRashi(prevSun.Sun.longitude);
+  const nextRashi = getSunRashi(nextSun.Sun.longitude);
 
   const isAdhika = prevRashi === nextRashi;
 
   /*
-    Lunar month naming rule:
-
-    Month name is based on the zodiac sign
-    occupied by the Sun during the lunar month.
-
-    Mapping:
-    Mesha -> Chaitra
-    Vrishabha -> Vaishakha
-    Mithuna -> Jyeshtha
-    etc.
-
-    Therefore:
-    monthIndex = (sunRashi + 1) % 12
+    Month naming rule (Amanta):
+    Month is named from Sun sign during Amavasya.
   */
 
   const monthIndex = (prevRashi + 1) % 12;
 
-  let monthName = LUNAR_MONTHS[monthIndex];
+  return {
+    isAdhika,
+    monthIndex
+  };
+}
 
-  if (isAdhika) {
-    monthName = `Adhika ${monthName}`;
+function calculatePurnimantaMonth(
+  calculator,
+  location,
+  targetDate
+) {
+  const prevPurnima = findPreviousBoundary(
+    calculator,
+    location,
+    targetDate,
+    "purnima"
+  );
+
+  if (!prevPurnima) {
+    return {
+      monthName: "Unknown"
+    };
   }
 
+  const sun = calculator.calculatePlanetaryPositions(prevPurnima);
+
+  const rashi = getSunRashi(sun.Sun.longitude);
+
+  const monthIndex = (rashi + 2) % 12;
+
   return {
-    amanta: monthName,
-    isAdhikaAmanta: isAdhika,
-    previousAmavasya: prevAmavasya,
-    nextAmavasya: nextAmavasya,
-    sunRashiPrevious: prevRashi,
-    sunRashiNext: nextRashi
+    monthName: MASA_NAMES[monthIndex]
   };
 }
 
@@ -157,31 +194,65 @@ function getPanchang({
       location
     });
 
-    const lunarMonth = calculateLunarMonth(
+    const adhikaData = calculateAdhikaMasa(
       calculator,
       location,
       targetDate
     );
 
+    let amantaMonth =
+      MASA_NAMES[adhikaData.monthIndex];
+
+    if (adhikaData.isAdhika) {
+      amantaMonth = `Adhika ${amantaMonth}`;
+    }
+
+    const purnimanta =
+      calculatePurnimantaMonth(
+        calculator,
+        location,
+        targetDate
+      );
+
     return {
       date: targetDate.toDateString(),
 
-      tithi: panchanga.tithi,
+      tithi: {
+        name: panchanga.tithi.name,
+        number: panchanga.tithi.number,
+        percentage: panchanga.tithi.percentage,
+        paksha: panchanga.tithi.paksha
+      },
 
-      vara: panchanga.vara,
+      vara: {
+        name: panchanga.vara.name,
+        number: panchanga.vara.number
+      },
 
-      lunarMonth,
+      lunarMonth: {
+        amanta: amantaMonth,
+        purnimanta: purnimanta.monthName,
+        isAdhikaAmanta: adhikaData.isAdhika
+      },
 
-      nakshatra: panchanga.nakshatra,
+      nakshatra: {
+        name: panchanga.nakshatra.name,
+        number: panchanga.nakshatra.number,
+        pada: panchanga.nakshatra.pada
+      },
 
-      yoga: panchanga.yoga,
+      yoga: {
+        name: panchanga.yoga.name,
+        number: panchanga.yoga.number
+      },
 
-      karana: panchanga.karana,
+      karana: {
+        name: panchanga.karana.name,
+        number: panchanga.karana.number
+      },
 
       sunrise: panchanga.sunrise,
-
       sunset: panchanga.sunset,
-
       rahuKaal: panchanga.rahuKaal
     };
   } finally {
