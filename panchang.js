@@ -28,7 +28,10 @@ function getSunRashi(longitude) {
 function isAmavasya(panchanga) {
   return (
     panchanga.tithi.name === "Amavasya" ||
-    panchanga.tithi.number === 30
+    (
+      panchanga.tithi.number === 15 &&
+      panchanga.tithi.paksha === "Krishna"
+    )
   );
 }
 
@@ -135,7 +138,7 @@ function calculateAdhikaMasa(
     Month is named from Sun sign during Amavasya.
   */
 
-  const monthIndex = (prevRashi + 1) % 12;
+  const monthIndex = prevRashi;
 
   return {
     isAdhika,
@@ -165,7 +168,7 @@ function calculatePurnimantaMonth(
 
   const rashi = getSunRashi(sun.Sun.longitude);
 
-  const monthIndex = (rashi + 2) % 12;
+  const monthIndex = (rashi + 1) % 12;
 
   return {
     monthName: MASA_NAMES[monthIndex]
