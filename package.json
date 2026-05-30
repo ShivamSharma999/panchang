@@ -1,6 +1,6 @@
 {
-  "name": "@sanatan/panchang",
-  "version": "1.0.10",
+  "name": "@sanatanai/panchang",
+  "version": "1.0.0",
   "description": "Complete Hindu Panchanga calculator with Tithi, Nakshatra, Yoga, Karana, Vara calculations and Swiss Ephemeris precision",
   "main": "panchang.js",
   "scripts": {},
@@ -26,7 +26,7 @@
     "moon-phase"
   ],
   "dependencies": {
-    "@bidyashish/panchang": "^1.0.0"
+    "@bidyashish/panchang": "^1.0.10"
   },
   "author": "SanatanAI",
   "license": "MIT",
