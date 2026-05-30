@@ -64,8 +64,6 @@ function getPanchang(targetDate = new Date(), latitude = 28.6139, longitude = 77
     } catch (error) {
         console.error("Astronomical calculation failed:", error);
         throw error;
-    } finally {
-        calculator.cleanup();
     }
 }
 
