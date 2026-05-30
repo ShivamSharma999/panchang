@@ -77,19 +77,12 @@ function getPanchang(targetDate = new Date(), latitude = 28.6139, longitude = 77
 
         return {
             date: targetDate.toDateString(),
-            tithi: panchanga.tithi,
-            vara: panchanga.vara,
             lunarMonth: { 
                 amanta: amantaMonth, 
                 purnimanta: purnimantaMonth, 
                 isAdhika: isAdhika 
             },
-            nakshatra: panchanga.nakshatra,
-            yoga: panchanga.yoga,
-            karana: panchanga.karana,
-            sunrise: panchanga.sunrise,
-            sunset: panchanga.sunset,
-            rahuKaal: panchanga.rahuKaal,
+            ...panchanga
         };
 
     } catch (error) {
