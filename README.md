@@ -1,2 +1,2 @@
-# @sanatanai/panchang
+# @sanatan/panchang
 Panchang Astronomy library
