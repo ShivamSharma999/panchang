@@ -1,5 +1,4 @@
-const { AstronomicalCalculator } = require('@bidyashish/panchang');
-const MASA_NAMES = [ "Chaitra", "Vaishakha", "Jyeshtha", "Ashadha", "Shravana", "Bhadrapada",  "Ashwina", "Kartika", "Margashirsha", "Pausha", "Magha", "Phalguna"];
+const { getDailyPanchang } = require('panchang-ts');
 
 // Helper: Calculate Lahiri Ayanamsha to convert Tropical to Sidereal
 function getLahiriAyanamsha(date) {
@@ -30,11 +29,10 @@ function isAdhikaMasa(startAmavasya, endAmavasya, calculator) {
 }
 
 function getPanchang(targetDate = new Date(), latitude = 28.6139, longitude = 77.2090, timezone = "Asia/Kolkata") {
-    const calculator = new AstronomicalCalculator();
-    const location = { latitude, longitude, timezone };
+    const location = { latitude, longitude };
 
     try {
-        const panchanga = calculator.calculatePanchanga({ date: targetDate, location });
+        const panchanga = getDailyPanchang(targetDate, location, {timezone});
 
         // 1. Locate Lunar Month Boundaries safely
         let prevAmavasyaDate = new Date(targetDate);
@@ -57,31 +55,9 @@ function getPanchang(targetDate = new Date(), latitude = 28.6139, longitude = 77
         // 2. Determine Adhika Masa 
         const isAdhika = isAdhikaMasa(prevAmavasyaDate, nextAmavasyaDate, calculator);
 
-        // 3. Get Sidereal Sun Sign at the start of the lunar month
-        const pos = calculator.calculatePlanetaryPositions(prevAmavasyaDate);
-        const startRashi = getNirayanaRashi(pos.Sun.longitude, prevAmavasyaDate);
-
-        // 4. Calculate Month Names (Vedic rule: Month is named by the Rashi the Sun transits INTO)
-        const monthIndex = (startRashi + 1) % 12;
-        let amantaMonth = MASA_NAMES[monthIndex];
-        
-        // Purnimanta month is identical to Amanta in Shukla Paksha, but +1 month in Krishna Paksha
-        const purnimantaIndex = panchanga.tithi.paksha === 'Krishna' ? (monthIndex + 1) % 12 : monthIndex;
-        let purnimantaMonth = MASA_NAMES[purnimantaIndex];
-
-        // Append Adhika prefix if required
-        if (isAdhika) {
-            amantaMonth = "Adhika " + amantaMonth;
-            purnimantaMonth = "Adhika " + purnimantaMonth;
-        }
 
         return {
             date: targetDate.toDateString(),
-            lunarMonth: { 
-                amanta: amantaMonth, 
-                purnimanta: purnimantaMonth, 
-                isAdhika: isAdhika 
-            },
             ...panchanga
         };
 
